@@ -52,7 +52,7 @@ print("[+] Dataset securely hashed, signed, and encrypted.")
 
 # 4. Transmit over TCP Socket
 HOST = '127.0.0.1'
-PORT = 65432
+PORT = 65431
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print(f"Connecting to untrusted Model Trainer at {HOST}:{PORT}...")
