@@ -21,30 +21,79 @@ PORT = 65432
 import networkx as nx
 import matplotlib.pyplot as plt
 
+
 def visualize_reconstructed_graph(graph_data):
     """Visualizes the successfully transmitted graph dataset."""
     print("Visualizing the reconstructed graph...")
-    
+
     # 1. Create a NetworkX graph from the adjacency matrix
     adjacency = graph_data['adjacency']
-    G = nx.from_numpy_array(adjacency, create_using=nx.DiGraph if graph_data['metadata']['directed'] else nx.Graph)
-    
+
+    G = nx.from_numpy_array(
+        adjacency,
+        create_using=nx.DiGraph if graph_data['metadata']['directed'] else nx.Graph
+    )
+
     # 2. Map the node features back to the graph nodes
     node_features = graph_data['node_features']
     nx.set_node_attributes(G, node_features)
-    
-    # 3. Draw the graph
+
+    edge_features = graph_data['edge_features']
+    nx.set_edge_attributes(G, edge_features)
+
+    # 3. Prepare edge weights based on edge type
+    edge_widths = []
+    edge_labels = {}
+
+    for u, v, data in G.edges(data=True):
+        edge_type = data.get("type", "NORMAL")
+
+        # Store edge label
+        edge_labels[(u, v)] = edge_type
+
+        # Increase width for DOUBLE edges
+        if edge_type == "DOUBLE":
+            edge_widths.append(4.0)
+        else:
+            edge_widths.append(1.5)
+
+    # 4. Draw the graph
     plt.figure(figsize=(8, 6))
-    
-    # Create labels showing the Node ID and its 'type' from the dictionary features
-    labels = {node: f"Node {node}\n({data.get('type', 'Unknown')})" for node, data in G.nodes(data=True)}
-    
-    # Use a spring layout for nice spacing
-    pos = nx.spring_layout(G)
-    nx.draw(G, pos, labels=labels, with_labels=True, node_color='lightgreen', 
-            node_size=2500, font_size=10, font_weight='bold', edge_color='gray')
-    
+
+    # Create labels showing the Node ID and its type
+    labels = {
+        node: data.get('type', 'Unknown')
+        for node, data in G.nodes(data=True)
+    }
+
+    # Use spring layout
+    pos = nx.spring_layout(G, seed=42)
+
+    # Draw nodes and edges
+    nx.draw(
+        G,
+        pos,
+        labels=labels,
+        with_labels=True,
+        node_color='lightgreen',
+        node_size=2500,
+        font_size=10,
+        font_weight='bold',
+        edge_color='gray',
+        width=edge_widths
+    )
+
+    # Draw edge labels
+    nx.draw_networkx_edge_labels(
+        G,
+        pos,
+        edge_labels=edge_labels,
+        font_color='red',
+        font_size=9
+    )
+
     plt.title(f"Securely Received Graph: {graph_data['metadata']['dataset_name']}")
+    plt.axis('off')
     plt.show()
 
 # --- Call this at the very end of your node_b.py ---
@@ -113,8 +162,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         
         # 8. Reconstruct the Graph Dataset for ML Training
         graph_dataset = pickle.loads(payload['graph_bytes'])
+        visualize_reconstructed_graph(graph_dataset)
         print("\n--- SECURE TRANSMISSION COMPLETE ---")
         print(f"Successfully loaded dataset: {graph_dataset['metadata']['dataset_name']}")
         print(f"Total Nodes: {graph_dataset['metadata']['nodes']}")
         print("Ready for Graph Representation Learning.")
-        visualize_reconstructed_graph(graph_dataset)
+

@@ -8,26 +8,32 @@ def get_graph_dataset():
     """
     # 1. Adjacency Matrix (Structure of the graph - e.g., 3 nodes)
     adjacency = np.array([
-        [0, 1, 0],
-        [1, 0, 1],
-        [0, 1, 0]
+        [0, 1, 1, 1],
+        [1, 0, 1, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 0]
     ])
     
     # 2. Node Features using dictionaries with dummy keys
     # Keys are node IDs (0, 1, 2)
     node_features = {
-        0: {"type": "client", "trust_score": 0.95, "active_sessions": 4},
-        1: {"type": "router", "trust_score": 0.50, "active_sessions": 12},
-        2: {"type": "server", "trust_score": 0.99, "active_sessions": 105}
+        0: {"type": "C"},
+        1: {"type": "H"},
+        2: {"type": "N"},
+        3: {"type": "O"},
     }
     
     # 3. Edge Features using dictionaries with dummy keys
     # Keys are tuples representing the directed edge (source, target)
     edge_features = {
-        (0, 1): {"weight": 1.5, "protocol": "TCP", "encrypted": True},
-        (1, 0): {"weight": 1.5, "protocol": "TCP", "encrypted": True},
-        (1, 2): {"weight": 0.9, "protocol": "UDP", "encrypted": False},
-        (2, 1): {"weight": 0.9, "protocol": "UDP", "encrypted": False}
+        (0, 1): {"type": "DOUBLE"},
+        (1, 0): {"type": "DOUBLE"},
+        (0, 2): {"type": "SINGLE"},
+        (2, 0): {"type": "SINGLE"},
+        (0, 3): {"type": "SINGLE"},
+        (3, 0): {"type": "SINGLE"},
+        (1, 2): {"type": "SINGLE"},
+        (2, 1): {"type": "SINGLE"}
     }
     
     # Package everything into a single transportable object
@@ -35,7 +41,7 @@ def get_graph_dataset():
         "adjacency": adjacency,
         "node_features": node_features,
         "edge_features": edge_features,
-        "metadata": {"nodes": 3, "directed": False, "dataset_name": "Network_Traffic_V1"}
+        "metadata": {"nodes": 4, "directed": False, "dataset_name": "Network_Traffic"}
     }
     
     return graph_payload

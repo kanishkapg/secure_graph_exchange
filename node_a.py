@@ -1,7 +1,8 @@
 import socket
 import time
 import pickle
-
+import matplotlib.pyplot as plt
+import networkx as nx
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
@@ -15,9 +16,85 @@ from crypto_utils.integrity import generate_data_hash
 node_a_private = load_private_key("certs/node_a_private.pem")
 node_b_public = load_public_key("certs/node_b_public.pem")
 
+
+def visualize_reconstructed_graph(graph_data):
+    """Visualizes the successfully transmitted graph dataset."""
+    print("Visualizing the reconstructed graph...")
+
+    # 1. Create a NetworkX graph from the adjacency matrix
+    adjacency = graph_data['adjacency']
+
+    G = nx.from_numpy_array(
+        adjacency,
+        create_using=nx.DiGraph if graph_data['metadata']['directed'] else nx.Graph
+    )
+
+    # 2. Map the node features back to the graph nodes
+    node_features = graph_data['node_features']
+    nx.set_node_attributes(G, node_features)
+
+    edge_features = graph_data['edge_features']
+    nx.set_edge_attributes(G, edge_features)
+
+    # 3. Prepare edge weights based on edge type
+    edge_widths = []
+    edge_labels = {}
+
+    for u, v, data in G.edges(data=True):
+        edge_type = data.get("type", "NORMAL")
+
+        # Store edge label
+        edge_labels[(u, v)] = edge_type
+
+        # Increase width for DOUBLE edges
+        if edge_type == "DOUBLE":
+            edge_widths.append(4.0)
+        else:
+            edge_widths.append(1.5)
+
+    # 4. Draw the graph
+    plt.figure(figsize=(8, 6))
+
+    # Create labels showing the Node ID and its type
+    labels = {
+        node: data.get('type', 'Unknown')
+        for node, data in G.nodes(data=True)
+    }
+
+    # Use spring layout
+    pos = nx.spring_layout(G, seed=42)
+
+    # Draw nodes and edges
+    nx.draw(
+        G,
+        pos,
+        labels=labels,
+        with_labels=True,
+        node_color='lightgreen',
+        node_size=2500,
+        font_size=10,
+        font_weight='bold',
+        edge_color='gray',
+        width=edge_widths
+    )
+
+    # Draw edge labels
+    nx.draw_networkx_edge_labels(
+        G,
+        pos,
+        edge_labels=edge_labels,
+        font_color='red',
+        font_size=9
+    )
+
+    plt.title(f"Sending Graph: {graph_data['metadata']['dataset_name']}")
+    plt.axis('off')
+    plt.show()
+
 print("--- NODE A (Data Owner) STARTING ---")
 # 2. Extract and format the Graph Dataset
 graph_data = get_graph_dataset()
+visualize_reconstructed_graph(graph_data)
 serialized_graph = pickle.dumps(graph_data)
 print(f"Loaded Graph Dataset: {graph_data['metadata']['dataset_name']}")
 
@@ -55,7 +132,7 @@ print("[+] Dataset securely hashed, signed, and encrypted.")
 
 # 4. Transmit over TCP Socket
 HOST = '127.0.0.1'
-PORT = 65432
+PORT = 65431
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print(f"Connecting to untrusted Model Trainer at {HOST}:{PORT}...")
