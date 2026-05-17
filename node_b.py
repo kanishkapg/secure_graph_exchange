@@ -10,11 +10,9 @@ from crypto_utils.auth import load_private_key, load_public_key, verify_signatur
 from crypto_utils.encryption import decrypt_data
 from crypto_utils.integrity import verify_data_integrity
 
-# 1. Load Keys (Node B's private key, Node A's public key for authentication)
 node_b_private = load_private_key("certs/node_b_private.pem")
 node_a_public = load_public_key("certs/node_a_public.pem")
 
-# 2. Setup TCP Server
 HOST = '127.0.0.1'
 PORT = 65432
 
@@ -26,7 +24,6 @@ def visualize_reconstructed_graph(graph_data):
     """Visualizes the successfully transmitted graph dataset."""
     print("Visualizing the reconstructed graph...")
 
-    # 1. Create a NetworkX graph from the adjacency matrix
     adjacency = graph_data['adjacency']
 
     G = nx.from_numpy_array(
@@ -34,14 +31,12 @@ def visualize_reconstructed_graph(graph_data):
         create_using=nx.DiGraph if graph_data['metadata']['directed'] else nx.Graph
     )
 
-    # 2. Map the node features back to the graph nodes
     node_features = graph_data['node_features']
     nx.set_node_attributes(G, node_features)
 
     edge_features = graph_data['edge_features']
     nx.set_edge_attributes(G, edge_features)
 
-    # 3. Prepare edge weights based on edge type
     edge_widths = []
     edge_labels = {}
 
@@ -57,7 +52,6 @@ def visualize_reconstructed_graph(graph_data):
         else:
             edge_widths.append(1.5)
 
-    # 4. Draw the graph
     plt.figure(figsize=(8, 6))
 
     # Create labels showing the Node ID and its type
@@ -96,27 +90,23 @@ def visualize_reconstructed_graph(graph_data):
     plt.axis('off')
     plt.show()
 
-# --- Call this at the very end of your node_b.py ---
-# visualize_reconstructed_graph(graph_dataset)
 
-print("--- NODE B (Model Trainer) STARTING ---")
+print("NODE B (Model Trainer) STARTING")
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((HOST, PORT))
     s.listen()
-    print(f"Listening securely on {HOST}:{PORT}...")
+    print(f"Listening securely on {HOST}:{PORT}")
     
     conn, addr = s.accept()
     with conn:
         print(f"Connection established with untrusted entity at {addr}")
         
-        # 3. Receive the Encrypted Session Key and Payload
         encrypted_session_key = receive_message(conn)
         encrypted_payload = receive_message(conn)
         
         print("Receiving encrypted data...")
 
         try:
-            # 4. Decrypt the Session Key 
             session_key = node_b_private.decrypt(
                 encrypted_session_key,
                 padding.OAEP(
@@ -126,44 +116,40 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 )
             )
             
-            # 5. Decrypt the Payload using the Session Key
             decrypted_payload_bytes = decrypt_data(encrypted_payload, session_key)
             payload = pickle.loads(decrypted_payload_bytes)
             
             MAX_TIME_DIFF = 60 # Packets older than 60 seconds are rejected
             current_time = time.time()
             if current_time - payload.get('timestamp', 0) > MAX_TIME_DIFF:
-                print("\n🚨 SECURITY ALERT: REPLAY ATTACK DETECTED! 🚨")
+                print("\nSECURITY ALERT: REPLAY ATTACK DETECTED!")
                 print("The packet is too old. It was likely captured and resent by an attacker.")
                 print("Connection terminated.")
                 exit()
             print("[+] Freshness Verified: Packet is recent (Replay Attack mitigated).")
             
         except InvalidToken:
-            print("\n🚨 SECURITY ALERT: MITM ATTACK DETECTED! 🚨")
+            print("\nSECURITY ALERT: MITM ATTACK DETECTED!")
             print("The encrypted payload was tampered with during transmission.")
             print("Decryption failed. Connection terminated to protect system integrity.")
             exit()
         except Exception as e:
-            print(f"\n🚨 SECURITY ALERT: Unknown decryption error: {e}")
+            print(f"\nSECURITY ALERT: Unknown decryption error: {e}")
             exit()
             
-        # 6. Verify Data Integrity (Hashing)
         if not verify_data_integrity(payload['graph_bytes'], payload['hash']):
             print("CRITICAL ERROR: Data integrity check failed! Connection dropped.")
             exit()
         print("[+] Integrity Verified: Data was not tampered with.")
         
-        # 7. Verify Sender Identity (Authentication & Non-repudiation)
         if not verify_signature(node_a_public, payload['signature'], payload['graph_bytes']):
             print("CRITICAL ERROR: Digital signature invalid! Identity spoofed. Connection dropped.")
             exit()
         print("[+] Authentication Verified: Graph data definitely came from Node A.")
         
-        # 8. Reconstruct the Graph Dataset for ML Training
         graph_dataset = pickle.loads(payload['graph_bytes'])
         visualize_reconstructed_graph(graph_dataset)
-        print("\n--- SECURE TRANSMISSION COMPLETE ---")
+        print("\nSECURE TRANSMISSION COMPLETE")
         print(f"Successfully loaded dataset: {graph_dataset['metadata']['dataset_name']}")
         print(f"Total Nodes: {graph_dataset['metadata']['nodes']}")
         print("Ready for Graph Representation Learning.")

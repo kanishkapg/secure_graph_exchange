@@ -12,7 +12,6 @@ from crypto_utils.auth import load_private_key, load_public_key, sign_data
 from crypto_utils.encryption import generate_session_key, encrypt_data
 from crypto_utils.integrity import generate_data_hash
 
-# 1. Load Keys (Node A's private key for signing, Node B's public key for key exchange)
 node_a_private = load_private_key("certs/node_a_private.pem")
 node_b_public = load_public_key("certs/node_b_public.pem")
 
@@ -91,14 +90,13 @@ def visualize_reconstructed_graph(graph_data):
     plt.axis('off')
     plt.show()
 
-print("--- NODE A (Data Owner) STARTING ---")
-# 2. Extract and format the Graph Dataset
+print("NODE A (Data Owner) STARTING ")
+
 graph_data = get_graph_dataset()
 visualize_reconstructed_graph(graph_data)
 serialized_graph = pickle.dumps(graph_data)
 print(f"Loaded Graph Dataset: {graph_data['metadata']['dataset_name']}")
 
-# 3. Apply Security Properties
 # Authentication / Non-repudiation: Sign the data
 signature = sign_data(node_a_private, serialized_graph)
 
@@ -128,19 +126,17 @@ encrypted_session_key = node_b_public.encrypt(
     )
 )
 
-print("[+] Dataset securely hashed, signed, and encrypted.")
+print("Dataset securely hashed, signed, and encrypted")
 
-# 4. Transmit over TCP Socket
 HOST = '127.0.0.1'
 PORT = 65431
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    print(f"Connecting to untrusted Model Trainer at {HOST}:{PORT}...")
+    print(f"Connecting to untrusted Model Trainer at {HOST}:{PORT}")
     s.connect((HOST, PORT))
-    
-    # Send the encrypted session key first, then the huge payload
+
     send_message(s, encrypted_session_key)
     send_message(s, encrypted_payload)
-    
-    print("\n--- SECURE TRANSMISSION COMPLETE ---")
+
+    print("\nSECURE TRANSMISSION COMPLETE")
     print("Graph dataset sent securely. Terminating connection.")
