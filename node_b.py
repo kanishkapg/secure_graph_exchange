@@ -2,6 +2,7 @@ import socket
 import pickle
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.fernet import InvalidToken # Add this to your imports at the top!
 
 from communication.socket_handler import receive_message
 from crypto_utils.auth import load_private_key, load_public_key, verify_signature
@@ -15,6 +16,38 @@ node_a_public = load_public_key("certs/node_a_public.pem")
 # 2. Setup TCP Server
 HOST = '127.0.0.1'
 PORT = 65432
+
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def visualize_reconstructed_graph(graph_data):
+    """Visualizes the successfully transmitted graph dataset."""
+    print("Visualizing the reconstructed graph...")
+    
+    # 1. Create a NetworkX graph from the adjacency matrix
+    adjacency = graph_data['adjacency']
+    G = nx.from_numpy_array(adjacency, create_using=nx.DiGraph if graph_data['metadata']['directed'] else nx.Graph)
+    
+    # 2. Map the node features back to the graph nodes
+    node_features = graph_data['node_features']
+    nx.set_node_attributes(G, node_features)
+    
+    # 3. Draw the graph
+    plt.figure(figsize=(8, 6))
+    
+    # Create labels showing the Node ID and its 'type' from the dictionary features
+    labels = {node: f"Node {node}\n({data.get('type', 'Unknown')})" for node, data in G.nodes(data=True)}
+    
+    # Use a spring layout for nice spacing
+    pos = nx.spring_layout(G)
+    nx.draw(G, pos, labels=labels, with_labels=True, node_color='lightgreen', 
+            node_size=2500, font_size=10, font_weight='bold', edge_color='gray')
+    
+    plt.title(f"Securely Received Graph: {graph_data['metadata']['dataset_name']}")
+    plt.show()
+
+# --- Call this at the very end of your node_b.py ---
+# visualize_reconstructed_graph(graph_dataset)
 
 print("--- NODE B (Model Trainer) STARTING ---")
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -32,20 +65,30 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         
         print("Receiving encrypted data...")
 
-        # 4. Decrypt the Session Key using Node B's Private RSA Key (Key Exchange)
-        session_key = node_b_private.decrypt(
-            encrypted_session_key,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
+        try:
+            # 4. Decrypt the Session Key 
+            session_key = node_b_private.decrypt(
+                encrypted_session_key,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
             )
-        )
-        
-        # 5. Decrypt the Payload using the Session Key (Confidentiality)
-        decrypted_payload_bytes = decrypt_data(encrypted_payload, session_key)
-        payload = pickle.loads(decrypted_payload_bytes)
-        
+            
+            # 5. Decrypt the Payload using the Session Key
+            decrypted_payload_bytes = decrypt_data(encrypted_payload, session_key)
+            payload = pickle.loads(decrypted_payload_bytes)
+            
+        except InvalidToken:
+            print("\n🚨 SECURITY ALERT: MITM ATTACK DETECTED! 🚨")
+            print("The encrypted payload was tampered with during transmission.")
+            print("Decryption failed. Connection terminated to protect system integrity.")
+            exit()
+        except Exception as e:
+            print(f"\n🚨 SECURITY ALERT: Unknown decryption error: {e}")
+            exit()
+            
         # 6. Verify Data Integrity (Hashing)
         if not verify_data_integrity(payload['graph_bytes'], payload['hash']):
             print("CRITICAL ERROR: Data integrity check failed! Connection dropped.")
@@ -64,3 +107,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         print(f"Successfully loaded dataset: {graph_dataset['metadata']['dataset_name']}")
         print(f"Total Nodes: {graph_dataset['metadata']['nodes']}")
         print("Ready for Graph Representation Learning.")
+        visualize_reconstructed_graph(graph_dataset)
