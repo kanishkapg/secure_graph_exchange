@@ -1,5 +1,10 @@
 # mitm_proxy.py
 import socket
+
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from communication.socket_handler import receive_message, send_message
 
 # The proxy poses as the server to Node A

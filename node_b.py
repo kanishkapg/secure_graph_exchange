@@ -1,5 +1,6 @@
 import socket
 import pickle
+import time
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.fernet import InvalidToken # Add this to your imports at the top!
@@ -79,6 +80,15 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             # 5. Decrypt the Payload using the Session Key
             decrypted_payload_bytes = decrypt_data(encrypted_payload, session_key)
             payload = pickle.loads(decrypted_payload_bytes)
+            
+            MAX_TIME_DIFF = 60 # Packets older than 60 seconds are rejected
+            current_time = time.time()
+            if current_time - payload.get('timestamp', 0) > MAX_TIME_DIFF:
+                print("\n🚨 SECURITY ALERT: REPLAY ATTACK DETECTED! 🚨")
+                print("The packet is too old. It was likely captured and resent by an attacker.")
+                print("Connection terminated.")
+                exit()
+            print("[+] Freshness Verified: Packet is recent (Replay Attack mitigated).")
             
         except InvalidToken:
             print("\n🚨 SECURITY ALERT: MITM ATTACK DETECTED! 🚨")

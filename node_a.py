@@ -1,5 +1,7 @@
 import socket
+import time
 import pickle
+
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
@@ -30,7 +32,8 @@ data_hash = generate_data_hash(serialized_graph)
 payload_dict = {
     'graph_bytes': serialized_graph,
     'signature': signature,
-    'hash': data_hash
+    'hash': data_hash,
+    'timestamp': time.time()
 }
 serialized_payload = pickle.dumps(payload_dict)
 
@@ -52,7 +55,7 @@ print("[+] Dataset securely hashed, signed, and encrypted.")
 
 # 4. Transmit over TCP Socket
 HOST = '127.0.0.1'
-PORT = 65431
+PORT = 65432
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print(f"Connecting to untrusted Model Trainer at {HOST}:{PORT}...")
