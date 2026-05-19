@@ -1,5 +1,4 @@
 import struct
-import socket
 
 def send_message(sock, data_bytes):
     """

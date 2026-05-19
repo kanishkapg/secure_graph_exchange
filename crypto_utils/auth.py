@@ -3,17 +3,17 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
 
 def load_private_key(filepath):
-    """Loads an RSA private key from a PEM file."""
+    """Loads an RSA private key from a PEM file"""
     with open(filepath, "rb") as key_file:
         return serialization.load_pem_private_key(key_file.read(), password=None)
 
 def load_public_key(filepath):
-    """Loads an RSA public key from a PEM file."""
+    """Loads an RSA public key from a PEM file"""
     with open(filepath, "rb") as key_file:
         return serialization.load_pem_public_key(key_file.read())
 
 def sign_data(private_key, data_bytes):
-    """Creates a digital signature for the data to ensure non-repudiation."""
+    """Creates a digital signature for the data to ensure non-repudiation"""
     signature = private_key.sign(
         data_bytes,
         padding.PSS(
@@ -25,7 +25,7 @@ def sign_data(private_key, data_bytes):
     return signature
 
 def verify_signature(public_key, signature, data_bytes):
-    """Verifies the digital signature to authenticate the sender."""
+    """Verifies the digital signature to authenticate the sender"""
     try:
         public_key.verify(
             signature,

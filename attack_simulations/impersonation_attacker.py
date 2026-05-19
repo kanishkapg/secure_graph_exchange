@@ -17,8 +17,8 @@ from crypto_utils.integrity import generate_data_hash
 # The attacker only has Node B's public key (which is public anyway)
 node_b_public = load_public_key("certs/node_b_public.pem")
 
-print("--- 😈 IMPERSONATION ATTACKER STARTING 😈 ---")
-print("[!] Generating fake RSA keys to pretend to be Node A...")
+print("IMPERSONATION ATTACKER STARTING")
+print("Generating fake RSA keys to pretend to be Node A...")
 # Attacker generates a FAKE private key on the fly
 fake_private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 

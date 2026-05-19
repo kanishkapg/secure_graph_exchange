@@ -4,7 +4,6 @@ import time
 import sys
 import os
 
-# Add parent directory to path so we can import your crypto modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -15,19 +14,18 @@ from crypto_utils.auth import load_private_key, load_public_key, sign_data
 from crypto_utils.encryption import generate_session_key, encrypt_data
 from crypto_utils.integrity import generate_data_hash
 
-# Load valid keys
 node_a_private = load_private_key("certs/node_a_private.pem")
 node_b_public = load_public_key("certs/node_b_public.pem")
 
-print("--- 😈 REPLAY ATTACKER STARTING 😈 ---")
-print("[!] Simulating an attacker who captured a valid packet 2 hours ago...")
+print("REPLAY ATTACKER STARTING")
+print("Simulating an attacker who captured a valid packet 2 hours ago.")
 
 graph_data = get_graph_dataset()
 serialized_graph = pickle.dumps(graph_data)
 signature = sign_data(node_a_private, serialized_graph)
 data_hash = generate_data_hash(serialized_graph)
 
-# THE ATTACK: Forging an old timestamp to simulate a captured past packet
+# THE ATTACK
 past_timestamp = time.time() - 7200 # 2 hours ago
 
 payload_dict = {
@@ -45,7 +43,7 @@ encrypted_session_key = node_b_public.encrypt(
     padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
 )
 
-print("[!] Sending captured packet to Node B...")
+print("Sending captured packet to Node B...")
 HOST = '127.0.0.1'
 PORT = 65432
 
@@ -55,4 +53,4 @@ try:
         send_message(s, encrypted_session_key)
         send_message(s, encrypted_payload)
 except ConnectionRefusedError:
-    print("Error: Make sure Node B is running first!")
+    print("Error")
